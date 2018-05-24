@@ -15,8 +15,7 @@ void setup()
 } // End setup()
 
 void loop()
-{
-  digitalWrite(HEADLIGHT_PIN,HIGH); 
+{ 
   MoveForward(DEFAULT_SPEED); 
 } // End loop()
 void MoveForward(int Speed) 
