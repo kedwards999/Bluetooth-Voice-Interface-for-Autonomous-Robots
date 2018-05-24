@@ -1,0 +1,58 @@
+#include <Adafruit_MotorShield.h>
+
+// Create the motor shield object with the default I2C address
+Adafruit_MotorShield AFMS = Adafruit_MotorShield(0x60); 
+
+// Select all motor ports M1, M2, M3 or M4.
+Adafruit_DCMotor *motorM1 = AFMS.getMotor(1);
+Adafruit_DCMotor *motorM2 = AFMS.getMotor(2);
+Adafruit_DCMotor *motorM3 = AFMS.getMotor(3);
+Adafruit_DCMotor *motorM4 = AFMS.getMotor(4);
+const int DEFAULT_SPEED = 100;   // Default motor speed
+const int HEADLIGHT_PIN = 7;
+void setup()
+{
+   pinMode(HEADLIGHT_PIN,OUTPUT);
+   AFMS.begin();  // create with the default frequency 1.6KHz
+} // End setup()
+
+void loop()
+{
+  digitalWrite(HEADLIGHT_PIN,HIGH); 
+  MoveForward(DEFAULT_SPEED); 
+  delay(2500);
+  digitalWrite(HEADLIGHT_PIN,LOW);
+  delay(2500);
+//      ******MoveForward******
+} // End loop()
+void MoveForward(int Speed) 
+{
+   Motor1Forward(Speed);
+   Motor2Forward(Speed);
+   Motor3Forward(Speed);
+   Motor4Forward(Speed);
+} // End MoveForward(int Speed)
+
+void Motor1Forward(int speed) 
+{
+ motorM1->setSpeed(speed);
+ motorM1->run(FORWARD);
+} // End Motor1Forward(int speed))               
+
+void Motor2Forward(int speed)
+{
+ motorM2->setSpeed(speed);
+ motorM2->run(FORWARD);
+} // End Motor2Forward(int speed)
+
+void Motor3Forward(int speed)
+{
+ motorM3->setSpeed(speed);
+ motorM3->run(FORWARD);
+} // End Motor3Forward(int speed)
+
+void Motor4Forward(int speed)
+{
+ motorM4->setSpeed(speed);
+ motorM4->run(FORWARD);
+} // End Motor4Forward(int speed)
