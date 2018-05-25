@@ -1,4 +1,6 @@
+#include <SoftwareSerial.h>
 #include <Adafruit_MotorShield.h>
+#include <DHT.h>
 
 // Create the motor shield object with the default I2C address
 Adafruit_MotorShield AFMS = Adafruit_MotorShield(0x60); 
@@ -8,20 +10,58 @@ Adafruit_DCMotor *motorM1 = AFMS.getMotor(1);
 Adafruit_DCMotor *motorM2 = AFMS.getMotor(2);
 Adafruit_DCMotor *motorM3 = AFMS.getMotor(3);
 Adafruit_DCMotor *motorM4 = AFMS.getMotor(4);
+
 const int DEFAULT_SPEED = 100;   // Default motor speed
+const int MILLISECONDS = 2200;
+const int HEADLIGHTS_PIN = 7;
+const int COMMAND_BUFFER_LENGTH = 80;
+
+#define CONNAND_ARRAY_SIZE sizeof(robotCommands)/sizeof(char *)
+char* robotCommands[]= {"move forward", "go forward", "turn right", "turn left", "turn around", "move backwards", 
+                        "go backwards", "stop", "turn lights on", "turn lights off", "temperature", "humidity"};
+                        
+SoftwareSerial BTserial(3, 4);
+
+const int BAUDRATE = 9600;
+int numberIndex = 0;
+char receivedData[81];
+String stringBuffer;
+int commandFoundAtIndex = 0;
+int moveSeconds = 0;
+char numberBuffer[10];
+String numbericStringBuffer;
+
+#define DHT_PIN 2
+#define DHT_TYPE DHT22
+DHT dht(DHT_PIN, DHT_TYPE); // Initialize DHT sensor.
+String sendTemperature;
+float fahrenheit;
+float humidity;
 
 void setup()
 { 
    AFMS.begin();  // create with the default frequency 1.6KHz
+  // Open Serial ports
+  Serial.begin(BAUDRATE);
+  BTserial.begin(BAUDRATE);
+  
+  pinMode(HEADLIGHTS_PIN,OUTPUT);
+ 
+  dht.begin();
+  getTemperature();
+  Serial.print("Program Start");
 } // End setup()
 
 void loop()
 {
-  
 
-
+  if( BTserial.available()) // Any Phone data available to read?
+  {
+    GetCommand();
+  } // End if( BTserial.available())
 
 } // End loop()
+
 void MoveForward(int Speed) 
 {
    Motor1Forward(Speed);
@@ -29,6 +69,82 @@ void MoveForward(int Speed)
    Motor3Forward(Speed);
    Motor4Forward(Speed);
 } // End MoveForward(int Speed)
+
+void MoveBackwards(int Speed) 
+{   
+    Motor1Backwards(Speed);
+    Motor2Backwards(Speed);
+    Motor3Backwards(Speed); 
+    Motor4Backwards(Speed);
+} // End MoveBackwards(int Speed)
+
+
+//      ******MoveBackwards******
+
+void MoveBackwards(int Speed, int milliSeconds) 
+{   
+    Motor1Backwards(Speed);
+    Motor2Backwards(Speed);
+    Motor3Backwards(Speed); 
+    Motor4Backwards(Speed);
+    delay(milliSeconds*2);
+    Stop();
+
+} // End MoveBackwards(int Speed)
+
+
+//      ******MoveRight******
+
+void MoveRight(int Speed) 
+{
+   Motor1Forward(Speed);
+   Motor2Backwards(Speed);
+   Motor3Backwards(Speed); 
+   Motor4Forward(Speed);
+} // End MoveRight(int Speed)
+
+//      ******MoveRight / Seconds******
+
+void MoveRight (int Speed, int milliSeconds)
+{
+   Motor1Forward(Speed);
+   Motor2Backwards(Speed);
+   Motor3Backwards(Speed); 
+   Motor4Forward(Speed);
+   delay(milliSeconds);
+   Stop();
+   
+} // End MoveRight (int Speed, int milliSeconds)
+
+//          Move Left
+
+void MoveLeft(int Speed) 
+{
+   Motor1Backwards(Speed);
+   Motor2Forward(Speed);
+   Motor3Forward(Speed); 
+   Motor4Backwards(Speed);
+} // End MoveLeft(int Speed)
+
+void MoveLeft(int Speed, int milliSeconds) 
+{
+   Motor1Backwards(Speed);
+   Motor2Forward(Speed);
+   Motor3Forward(Speed); 
+   Motor4Backwards(Speed);
+   delay(milliSeconds);
+   Stop();
+} // End MoveLeft(int Speed)
+
+//      ******Stop******
+
+void Stop()
+{
+  motorM1->run(RELEASE);
+  motorM2->run(RELEASE);
+  motorM3->run(RELEASE);
+  motorM4->run(RELEASE);
+} // End Stop()
 
 void Motor1Forward(int speed) 
 {
@@ -54,6 +170,178 @@ void Motor4Forward(int speed)
  motorM4->run(FORWARD);
 } // End Motor4Forward(int speed)
 
+//      ******Motor1Backwards******
+
+void Motor1Backwards(int speed)
+{
+ motorM1->setSpeed(speed);
+ motorM1->run(BACKWARD);
+} // End Motor1Backwards(int speed)
+
+void Motor2Backwards(int speed)
+{
+ motorM2->setSpeed(speed);
+ motorM2->run(BACKWARD);
+} // End Motor2Backwards(int speed)
+
+//      ******Motor3 Backwards******
+
+void Motor3Backwards(int speed)
+{
+ motorM3->setSpeed(speed);
+ motorM3->run(BACKWARD);
+} // End Motor3Backwards(int speed)
+
+void Motor4Backwards(int speed)
+{
+ motorM4->setSpeed(speed);
+ motorM4->run(BACKWARD);
+} // End Motor4Backwards(int speed) 
+
+void GetCommand()
+{
+   for (int i = 0; i < COMMAND_BUFFER_LENGTH; i++)
+   {
+      receivedData[i] = 0;
+   } // End for (int i = 0; i < COMMAND_BUFFER_LENGTH; i++)
+
+    BTserial.readBytes(receivedData,COMMAND_BUFFER_LENGTH); 
+    stringBuffer = receivedData;
+    commandFoundAtIndex = 999;
+
+    for (int i = 0; i <= CONNAND_ARRAY_SIZE; i++)
+    {
+      if(stringBuffer.indexOf(robotCommands[i]) >= 0 )
+      {
+      commandFoundAtIndex = i;
+      break;
+      } // End if(stringBuffer.indexOf(robotCommands[i]) >= 0 ) 
+    } // End for (int i = 0; i <= CONNAND_ARRAY_SIZE; i++)
+
+    switch(commandFoundAtIndex)
+    {
+      case 0:
+      case 1:
+        Serial.println("Moving forward");
+        BTserial.println("Moving forward");
+        GetNumber();
+        MoveForward(DEFAULT_SPEED);
+        if (moveSeconds > 0)
+        {
+          delay(moveSeconds);
+          Stop();
+        } // End if (moveSeconds > 0)
+        
+        break;
+      case 2:
+        Serial.println("Turning right");
+        BTserial.println("Turning right");
+        MoveRight(DEFAULT_SPEED,  MILLISECONDS);
+        break;
+      case 3:
+        Serial.println("Turning left");
+        BTserial.println("Turning left");
+        MoveLeft(DEFAULT_SPEED,  MILLISECONDS);
+        break;
+      case 4:
+        Serial.println("Turning around");
+        BTserial.println("Turning around");
+        MoveBackwards(DEFAULT_SPEED,  MILLISECONDS);
+        break;
+      case 5:
+      case 6:
+        Serial.println("Moving Backwards");
+        BTserial.println("Moving Backwards");
+        GetNumber();
+        MoveBackwards(DEFAULT_SPEED);
+        if (moveSeconds > 0)
+        {
+          delay(moveSeconds);
+          Stop();
+        } // End if (moveSeconds > 0)
+        
+        break;
+      case 7:
+        Serial.println("Stopping");
+        BTserial.println("Stopping");
+        Stop();
+        break;
+      case 8:
+        Serial.println("Turning Lights On");
+        BTserial.println("Turning Lights On");
+        digitalWrite(HEADLIGHTS_PIN,HIGH);
+        break;
+      case 9:
+        Serial.println("Turning Lights Off");
+        BTserial.println("Turning Lights Off");
+        digitalWrite(HEADLIGHTS_PIN,LOW);
+        break;
+      case 10:
+      case 11:
+        getTemperature();
+        Serial.println(sendTemperature);
+        BTserial.println(sendTemperature);
+        break;
+      default:
+        Serial.println("I did not understand you, Please try again");
+        BTserial.println("I did not understand you, Please try again");
+        break;
+    } // End switch(commandFoundAtIndex)
+       
+} // End GetCommand()
+
+void GetNumber()
+{
+  numberIndex = 0;
+  moveSeconds = 0;
+  for (int i = 0; i < 10; ++i)
+  {
+    numberBuffer[i] = 0;
+  }
+  for (int i = 0; i < COMMAND_BUFFER_LENGTH; ++i)
+  {
+    if (isDigit(receivedData[i])) 
+    {
+      numberBuffer[numberIndex] = receivedData[i];
+      ++numberIndex;
+    } // End if (isDigit(receivedData[i]))
+    if (numberIndex > 0 && isSpace(receivedData[i]))
+    {
+       numbericStringBuffer = numberBuffer;
+       moveSeconds = numbericStringBuffer.toInt();
+       moveSeconds *= 1000;
+       break; 
+    } // End if (numberIndex > 0 && isSpace(receivedData[i]))
+  } // End for (int i = 0; i < COMMAND_BUFFER_LENGTH; ++i)
+
+  if (commandFoundAtIndex == 0 || commandFoundAtIndex == 1 || commandFoundAtIndex == 5 || commandFoundAtIndex == 6)
+    {
+      if (stringBuffer.indexOf(" one ") >= 0 && numberIndex > 0)
+      {
+        moveSeconds = 1000;
+      }
+      if (stringBuffer.indexOf(" to ") >= 0 && numberIndex > 0)
+      {
+        moveSeconds = 2000;
+      }
+    } // End if (commandFoundAtIndex == 0 || commandFoundAtIndex == 1 || commandFoundAtIndex == 5 || commandFoundAtIndex == 6)
+  
+} // End GetNumber()
+
+void getTemperature()
+{
+  humidity = dht.readHumidity();
+  fahrenheit = dht.readTemperature(true);
+  
+  if (isnan(humidity) || isnan(fahrenheit)) 
+  {
+    sendTemperature = "Failed to read data from the temperature sensor";
+    return;
+  } // End if (isnan(humidity) || isnan(fahrenheit))
+  String temperatureString = "The room temperature is ";
+  String humidityString = " degrees. The humidity is ";
+  String percentString = " percent.";
+  sendTemperature = temperatureString + fahrenheit + humidityString + humidity + percentString;
+
+} // End getTemperature()
  
-
-
