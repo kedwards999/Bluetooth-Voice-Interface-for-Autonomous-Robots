@@ -15,6 +15,7 @@ const int DEFAULT_SPEED = 100;   // Default motor speed
 const int MILLISECONDS = 2200;
 const int HEADLIGHTS_PIN = 7;
 const int COMMAND_BUFFER_LENGTH = 80;
+const int BAUDRATE = 9600;
 
 #define CONNAND_ARRAY_SIZE sizeof(robotCommands)/sizeof(char *)
 char* robotCommands[]= {"move forward", "go forward", "turn right", "turn left", "turn around", "move backwards", 
@@ -22,7 +23,6 @@ char* robotCommands[]= {"move forward", "go forward", "turn right", "turn left",
                         
 SoftwareSerial BTserial(3, 4);
 
-const int BAUDRATE = 9600;
 int numberIndex = 0;
 char receivedData[81];
 String stringBuffer;
@@ -33,9 +33,9 @@ String numbericStringBuffer;
 
 #define DHT_PIN 2
 #define DHT_TYPE DHT22
-DHT dht(DHT_PIN, DHT_TYPE); // Initialize DHT sensor.
+DHT dht(DHT_PIN, DHT_TYPE); 
 String sendTemperature;
-float fahrenheit;
+float temperature;
 float humidity;
 
 void setup()
@@ -48,7 +48,7 @@ void setup()
   pinMode(HEADLIGHTS_PIN,OUTPUT);
  
   dht.begin();
-  getTemperature();
+  
   Serial.print("Program Start");
 } // End setup()
 
@@ -331,17 +331,17 @@ void GetNumber()
 void getTemperature()
 {
   humidity = dht.readHumidity();
-  fahrenheit = dht.readTemperature(true);
+  temperature = dht.readTemperature(true);
   
   if (isnan(humidity) || isnan(fahrenheit)) 
   {
     sendTemperature = "Failed to read data from the temperature sensor";
     return;
   } // End if (isnan(humidity) || isnan(fahrenheit))
-  String temperatureString = "The room temperature is ";
+  String temperatureString = "The ambient temperature is ";
   String humidityString = " degrees. The humidity is ";
   String percentString = " percent.";
-  sendTemperature = temperatureString + fahrenheit + humidityString + humidity + percentString;
+  sendTemperature = temperatureString + temperature + humidityString + humidity + percentString;
 
 } // End getTemperature()
  
