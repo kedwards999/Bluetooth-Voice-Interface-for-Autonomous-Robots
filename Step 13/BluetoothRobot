@@ -15,7 +15,6 @@ const int DEFAULT_SPEED = 100;   // Default motor speed
 const int MILLISECONDS = 2200;
 const int HEADLIGHTS_PIN = 7;
 const int COMMAND_BUFFER_LENGTH = 80;
-const int BAUDRATE = 9600;
 
 #define CONNAND_ARRAY_SIZE sizeof(robotCommands)/sizeof(char *)
 char* robotCommands[]= {"move forward", "go forward", "turn right", "turn left", "turn around", "move backwards", 
@@ -23,6 +22,7 @@ char* robotCommands[]= {"move forward", "go forward", "turn right", "turn left",
                         
 SoftwareSerial BTserial(3, 4);
 
+const int BAUDRATE = 9600;
 int numberIndex = 0;
 char receivedData[81];
 String stringBuffer;
@@ -33,31 +33,40 @@ String numbericStringBuffer;
 
 #define DHT_PIN 2
 #define DHT_TYPE DHT22
-DHT dht(DHT_PIN, DHT_TYPE); 
+DHT dht(DHT_PIN, DHT_TYPE); // Initialize DHT sensor.
 String sendTemperature;
 float temperature;
 float humidity;
 
 void setup()
 { 
-   AFMS.begin();  // create with the default frequency 1.6KHz
+  AFMS.begin();  // create with the default frequency 1.6KHz
   // Open Serial ports
+  pinMode(HEADLIGHTS_PIN,OUTPUT);
+  pinMode(3, INPUT);
+  pinMode(4, OUTPUT);
+  
   Serial.begin(BAUDRATE);
   BTserial.begin(BAUDRATE);
-  
-  pinMode(HEADLIGHTS_PIN,OUTPUT);
- 
   dht.begin();
+  getTemperature();
   
   Serial.print("Program Start");
 } // End setup()
 
 void loop()
 {
-
-  if( BTserial.available()) // Any Phone data available to read?
+  if(BTserial.available()>0) // Any Phone data available to read?
   {
-    GetCommand();
+       for (int i = 0; i < COMMAND_BUFFER_LENGTH; i++)
+   {
+      receivedData[i] = 0;
+   } // End for (int i = 0; i < COMMAND_BUFFER_LENGTH; i++)
+    BTserial.readBytes(receivedData,COMMAND_BUFFER_LENGTH); 
+    if (isAscii(receivedData[0]))
+    {
+      GetCommand();
+    }   
   } // End if( BTserial.available())
 
 } // End loop()
@@ -115,9 +124,9 @@ void MoveRight (int Speed, int milliSeconds)
    Stop();
    
 } // End MoveRight (int Speed, int milliSeconds)
-
+//
 //          Move Left
-
+//
 void MoveLeft(int Speed) 
 {
    Motor1Backwards(Speed);
@@ -200,12 +209,6 @@ void Motor4Backwards(int speed)
 
 void GetCommand()
 {
-   for (int i = 0; i < COMMAND_BUFFER_LENGTH; i++)
-   {
-      receivedData[i] = 0;
-   } // End for (int i = 0; i < COMMAND_BUFFER_LENGTH; i++)
-
-    BTserial.readBytes(receivedData,COMMAND_BUFFER_LENGTH); 
     stringBuffer = receivedData;
     commandFoundAtIndex = 999;
 
@@ -223,7 +226,7 @@ void GetCommand()
       case 0:
       case 1:
         Serial.println("Moving forward");
-        BTserial.println("Moving forward");
+        Serial.println(BTserial.println("Moving forward"));
         GetNumber();
         MoveForward(DEFAULT_SPEED);
         if (moveSeconds > 0)
@@ -251,7 +254,7 @@ void GetCommand()
       case 5:
       case 6:
         Serial.println("Moving Backwards");
-        BTserial.println("Moving Backwards");
+        Serial.println(BTserial.println("Moving Backwards"));
         GetNumber();
         MoveBackwards(DEFAULT_SPEED);
         if (moveSeconds > 0)
@@ -262,9 +265,9 @@ void GetCommand()
         
         break;
       case 7:
-        Serial.println("Stopping");
-        BTserial.println("Stopping");
         Stop();
+        Serial.println("Stopping");
+        Serial.println(BTserial.println("Stopping"));
         break;
       case 8:
         Serial.println("Turning Lights On");
@@ -333,7 +336,7 @@ void getTemperature()
   humidity = dht.readHumidity();
   temperature = dht.readTemperature(true);
   
-  if (isnan(humidity) || isnan(fahrenheit)) 
+  if (isnan(humidity) || isnan(temperature)) 
   {
     sendTemperature = "Failed to read data from the temperature sensor";
     return;
